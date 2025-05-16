@@ -1,133 +1,122 @@
 import os
 import io
 import zipfile
+import pathlib
 import streamlit as st
 from PIL import Image, ImageOps
 from pillow_lut import load_cube_file
 
-# --- Configuração de estilo retro minimalista ---
+# ─────────────────────────────────────────  ESTILO RETRÔ  ─────────────────────────────────────────
 st.markdown(
     """
     <style>
-    body {
-        background-color: #f5f1e0;
-        color: #333;
-        font-family: 'Courier New', monospace;
-    }
-    .reportview-container .main .block-container {
-        padding: 2rem;
-    }
-    h1, h2 {
-        font-family: 'Courier New', monospace;
-        color: #444;
-    }
-    .sidebar .sidebar-content {
-        background-color: #e8dfcb;
-    }
-    button {
-        background-color: #d4b483;
-        color: #222;
-        border: none;
-    }
-    button:hover {
-        background-color: #b5956b;
-    }
+    body{background:#f5f1e0;color:#333;font-family:'Courier New',monospace;}
+    .block-container{padding:2rem;}
+    h1,h2{color:#444;}
+    .sidebar .sidebar-content{background:#e8dfcb;}
+    button{background:#d4b483;color:#222;border:none;}
+    button:hover{background:#b5956b;}
     </style>
-    """, unsafe_allow_html=True
+    """,
+    unsafe_allow_html=True,
 )
 
 st.title("📼 Kodachrome LUT Platform")
-st.write("Navegue pelas pastas de LUTs e aplique filtros Kodachrome às suas imagens.")
+st.write("Navegue pelas pastas de LUTs ou envie o seu próprio arquivo `.cube`.")
 
-# Caminho raiz dos LUTs (relativo ao app)
-tree_root = os.path.join(os.path.dirname(__file__), "Film-Luts", "luts")
+# ────────────────────────────────  LOCALIZAÇÃO AUTOMÁTICA DOS LUTs  ───────────────────────────────
+def localizar_pastas_lut(base_dir: pathlib.Path) -> dict[str, list[pathlib.Path]]:
+    """Percorre recursivamente procurando arquivos .cube e devolve {pasta:[arquivos]}."""
+    pastas: dict[str, list[pathlib.Path]] = {}
+    for cube in base_dir.rglob("*.cube"):
+        pasta = cube.parent.relative_to(base_dir)
+        pastas.setdefault(str(pasta), []).append(cube)
+    return pastas
 
-# Verifica se a pasta de LUTs existe
-if not os.path.exists(tree_root):
-    st.error(f"Pasta de LUTs não encontrada: `{tree_root}`. Verifique o deploy.")
-    st.stop()
+# ponto de partida: diretório do script
+BASE_DIR = pathlib.Path(__file__).parent.resolve()
+pastas_lut = localizar_pastas_lut(BASE_DIR)
 
-# Busca subpastas de LUTs
-subdirs = [d for d in os.listdir(tree_root) if os.path.isdir(os.path.join(tree_root, d))]
+# se nada foi encontrado, instrui o usuário a fazer upload
+if not pastas_lut:
+    st.warning(
+        "Nenhuma pasta com arquivos `.cube` foi encontrada no repositório.\n"
+        "Envie manualmente um arquivo LUT abaixo ou verifique se as pastas de LUTs "
+        "foram adicionadas ao Git."
+    )
 
-if not subdirs:
-    st.error("Nenhuma subpasta de LUTs foi encontrada.")
-    st.stop()
-
-selected_folder = st.sidebar.selectbox("Escolha a pasta de LUTs", subdirs)
-lut_folder = os.path.join(tree_root, selected_folder)
-
-# Carrega arquivos .cube disponíveis
-lut_files = [f for f in os.listdir(lut_folder) if f.lower().endswith('.cube')]
-
-if not lut_files:
-    st.error("Nenhum arquivo .cube encontrado na pasta selecionada.")
-    st.stop()
-
-selected_lut = st.sidebar.selectbox("Selecione o LUT", lut_files)
-lut_path = os.path.join(lut_folder, selected_lut)
-
-# Carrega o LUT
-try:
-    lut = load_cube_file(lut_path)
-except Exception as e:
-    st.error(f"Erro ao carregar o LUT: {e}")
-    st.stop()
-
-# Upload de múltiplas imagens
-uploaded_images = st.sidebar.file_uploader(
-    "Selecione imagens", type=['jpg', 'jpeg', 'png', 'tif', 'bmp'],
-    accept_multiple_files=True
+# ────────────────────────────────  SELEÇÃO / UPLOAD DO LUT  ───────────────────────────────
+uploaded_lut_file = st.sidebar.file_uploader(
+    "⬆️ (opcional) Envie um arquivo `.cube`",
+    type=["cube"],
+    accept_multiple_files=False,
+    key="lut-uploader",
 )
 
-# Pré-visualização
+if uploaded_lut_file is not None:
+    lut_name = uploaded_lut_file.name
+    lut_bytes = uploaded_lut_file.read()
+    lut = load_cube_file(io.BytesIO(lut_bytes))
+else:
+    if not pastas_lut:
+        st.stop()  # nada para continuar
+    pasta_escolhida = st.sidebar.selectbox("📂 Escolha a pasta de LUTs", sorted(pastas_lut.keys()))
+    arquivos_cube = [p.name for p in sorted(pastas_lut[pasta_escolhida])]
+    nome_lut = st.sidebar.selectbox("🎞️ Escolha o LUT", arquivos_cube)
+    lut_path = next(p for p in pastas_lut[pasta_escolhida] if p.name == nome_lut)
+    lut = load_cube_file(str(lut_path))
+    lut_name = nome_lut
+
+# ────────────────────────────────  UPLOAD DAS IMAGENS  ───────────────────────────────
+uploaded_images = st.sidebar.file_uploader(
+    "⬆️ Envie imagens", type=["jpg", "jpeg", "png", "tif", "bmp"], accept_multiple_files=True
+)
+
+# ────────────────────────────────  PRÉ-VISUALIZAÇÃO  ───────────────────────────────
 if uploaded_images:
     st.header("Pré-visualização")
-    for uploaded in uploaded_images:
+    for up in uploaded_images:
         try:
-            img = Image.open(uploaded)
+            img = Image.open(up)
             img = ImageOps.exif_transpose(img).convert("RGB")
             w, h = img.size
-            if h > w:
-                display_img = img.rotate(90, expand=True)
-            else:
-                display_img = img
+            display_img = img.rotate(90, expand=True) if h > w else img
 
             col1, col2 = st.columns(2)
-            col1.image(display_img, caption=f"Original - {uploaded.name}", use_column_width=True)
-            preview = display_img.filter(lut)
-            col2.image(preview, caption=f"Filtro: {selected_lut}", use_column_width=True)
-        except Exception as e:
-            st.warning(f"Erro ao processar {uploaded.name}: {e}")
+            col1.image(display_img, caption=f"Original – {up.name}", use_column_width=True)
+            col2.image(display_img.filter(lut), caption=f"LUT – {lut_name}", use_column_width=True)
+        except Exception as err:
+            st.error(f"Erro ao processar **{up.name}**: {err}")
 
-# Processar e baixar ZIP
-if uploaded_images:
-    if st.sidebar.button("Processar e Baixar ZIP"):
-        zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(zip_buffer, "w") as zf:
-            for uploaded in uploaded_images:
-                try:
-                    img = Image.open(uploaded)
-                    img = ImageOps.exif_transpose(img).convert("RGB")
-                    w, h = img.size
-                    if h > w:
-                        img = img.rotate(90, expand=True)
-                    processed = img.filter(lut)
-                    buf = io.BytesIO()
-                    processed.save(buf, format='JPEG')
+# ────────────────────────────────  PROCESSAR & BAIXAR ZIP  ───────────────────────────────
+def salvar_zip(imagens, filtro, nome_lut) -> io.BytesIO:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as zf:
+        for up in imagens:
+            img = ImageOps.exif_transpose(Image.open(up)).convert("RGB")
+            w, h = img.size
+            img = img.rotate(90, expand=True) if h > w else img
+            proc = img.filter(filtro)
 
-                    # Nome do arquivo sem caracteres especiais
-                    base_name = os.path.splitext(uploaded.name)[0]
-                    lut_name_clean = os.path.splitext(selected_lut)[0].replace(" ", "_")
-                    filename = f"{base_name}_{lut_name_clean}.jpg"
-                    zf.writestr(filename, buf.getvalue())
-                except Exception as e:
-                    st.warning(f"Erro ao processar {uploaded.name}: {e}")
-        zip_buffer.seek(0)
-        st.sidebar.download_button(
-            "Baixar Imagens Processadas", data=zip_buffer,
-            file_name="kodachrome_processed.zip", mime="application/zip"
-        )
+            temp = io.BytesIO()
+            proc.save(temp, format="JPEG")
+            temp.seek(0)
+
+            base = os.path.splitext(up.name)[0]
+            lut_clean = os.path.splitext(nome_lut)[0].replace(" ", "_")
+            fname = f"{base}_{lut_clean}.jpg"
+            zf.writestr(fname, temp.read())
+    buffer.seek(0)
+    return buffer
+
+if uploaded_images and st.sidebar.button("⚙️ Processar & baixar ZIP"):
+    zip_buf = salvar_zip(uploaded_images, lut, lut_name)
+    st.sidebar.download_button(
+        "📥 Baixar imagens processadas",
+        data=zip_buf,
+        file_name="kodachrome_processed.zip",
+        mime="application/zip",
+    )
 
 st.sidebar.markdown("---")
-st.sidebar.write("Kodachrome LUT Platform • Retro Edition")
+st.sidebar.caption("Kodachrome LUT Platform • Retro Edition")
