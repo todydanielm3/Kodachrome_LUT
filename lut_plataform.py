@@ -40,7 +40,7 @@ st.title("📼 Kodachrome LUT Platform")
 st.write("Navegue pelas pastas de LUTs e aplique filtros Kodachrome às suas imagens.")
 
 # Caminho raiz dos LUTs
-tree_root = "/Users/danielmoraes/coding/ninho_de_cobra/processamento-imagens/Kodachrome_LUT/Film-Luts/luts"
+tree_root = "./Film-Luts/luts/"
 
 # Seleção de pasta de LUTs
 subdirs = [d for d in os.listdir(tree_root) if os.path.isdir(os.path.join(tree_root, d))]
