@@ -6,7 +6,12 @@ import streamlit as st
 from PIL import Image, ImageOps
 from pillow_lut import load_cube_file
 
-# ───────────────────────────  ESTILO RETRÔ  ───────────────────────────
+# ───────────────────────────  STREAMLIT CONFIG  ───────────────────────────
+st.set_page_config(
+    page_title="Kodachrome LUT Platform", layout="wide", initial_sidebar_state="expanded"
+)
+
+# ───────────────────────────  ESTILO RETRÔ & RESPONSIVO ───────────────────────────
 st.markdown(
     """
     <style>
@@ -16,6 +21,11 @@ st.markdown(
         .sidebar .sidebar-content{background:#e8dfcb;}
         button{background:#d4b483;color:#222;border:none;}
         button:hover{background:#b5956b;}
+        @media (max-width: 600px) {
+            .stSidebar {display: none;}
+            .block-container {padding:1rem;}
+            img {max-width:100% !important;height:auto !important;}
+        }
     </style>
     """,
     unsafe_allow_html=True,
@@ -26,7 +36,7 @@ st.write("Envie imagens, escolha um LUT ou use o seu próprio arquivo `.cube`.")
 
 # ───────────────────────────  PASTA ÚNICA COM LUTs  ───────────────────────────
 BASE_DIR = pathlib.Path(__file__).parent.resolve()
-LUT_DIR  = BASE_DIR / "luts"            # todos os .cube devem estar aqui
+LUT_DIR  = BASE_DIR / "luts"
 
 if not LUT_DIR.exists():
     st.error(f"Pasta de LUTs não encontrada: {LUT_DIR}")
@@ -37,32 +47,27 @@ if not lut_files:
     st.error("Nenhum arquivo `.cube` encontrado na pasta `luts/`.")
     st.stop()
 
-# ───────────────────────────  1) ENVIAR IMAGENS  ───────────────────────────
-uploaded_images = st.sidebar.file_uploader(
-    "⬆️ Envie imagens", type=["jpg", "jpeg", "png", "tif", "bmp"],
-    accept_multiple_files=True
-)
+# ───────────────────────────  CONFIGURAÇÕES & UPLOAD  ───────────────────────────
+with st.sidebar.expander("⚙️ Configurações"):
+    uploaded_images = st.file_uploader(
+        "⬆️ Envie imagens", type=["jpg","jpeg","png","tif","bmp"], accept_multiple_files=True
+    )
 
-# ───────────────────────────  2) ESCOLHER LUT  ───────────────────────────
-selected_lut_name = st.sidebar.selectbox("🎞️ Escolha o LUT", lut_files)
-selected_lut_path = LUT_DIR / selected_lut_name
+    selected_lut_name = st.selectbox("🎞️ Escolha o LUT", lut_files)
+    selected_lut_path = LUT_DIR / selected_lut_name
 
-# ───────────────────────────  3) LUT .CUBE LOCAL (opcional)  ────────────────
-st.sidebar.markdown("---")
-uploaded_lut_file = st.sidebar.file_uploader(
-    "⬆️ (opcional) Use um LUT `.cube` local",
-    type=["cube"],
-    accept_multiple_files=False
-)
+    uploaded_lut_file = st.file_uploader(
+        "⬆️ (Opcional) Use LUT `.cube` local", type=["cube"], accept_multiple_files=False
+    )
 
-# Carrega o LUT (prioridade: arquivo enviado pelo usuário)
+# Carrega o LUT (prioridade para upload local)
 try:
     if uploaded_lut_file is not None:
-        lut_name = uploaded_lut_file.name
         lut = load_cube_file(io.BytesIO(uploaded_lut_file.read()))
+        lut_name = uploaded_lut_file.name
     else:
-        lut_name = selected_lut_name
         lut = load_cube_file(str(selected_lut_path))
+        lut_name = selected_lut_name
 except Exception as e:
     st.error(f"Erro ao carregar LUT: {e}")
     st.stop()
@@ -75,8 +80,7 @@ if uploaded_images:
             img = ImageOps.exif_transpose(Image.open(up)).convert("RGB")
             w, h = img.size
             disp = img.rotate(90, expand=True) if h > w else img
-
-            col1, col2 = st.columns(2)
+            col1, col2 = st.columns(2, gap="small")
             col1.image(disp, caption=f"Original – {up.name}", use_column_width=True)
             col2.image(disp.filter(lut), caption=f"LUT – {lut_name}", use_column_width=True)
         except Exception as err:
@@ -91,11 +95,9 @@ def gerar_zip(imagens, filtro, lut_nome) -> io.BytesIO:
             w, h = img.size
             img = img.rotate(90, expand=True) if h > w else img
             proc = img.filter(filtro)
-
             tmp = io.BytesIO()
             proc.save(tmp, format="JPEG")
             tmp.seek(0)
-
             base = os.path.splitext(up.name)[0]
             lut_clean = lut_nome.rsplit(".", 1)[0].replace(" ", "_")
             zf.writestr(f"{base}_{lut_clean}.jpg", tmp.read())

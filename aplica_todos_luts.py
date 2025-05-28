@@ -4,8 +4,8 @@ from PIL import Image
 from pillow_lut import load_cube_file
 
 # Caminho da pasta com os LUTs
-LUT_FOLDER = "/Users/danielmoraes/coding/ninho_de_cobra/processamento-imagens/Kodachrome_LUT/Film-Luts/luts/negative_color/"
-OUTPUT_FOLDER = "luts_aplicados/negative_color"
+LUT_FOLDER = "./luts/"
+OUTPUT_FOLDER = "luts_aplicados/TODOS4"
 
 def listar_luts(caminho):
     luts = {}
