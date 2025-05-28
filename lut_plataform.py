@@ -24,9 +24,6 @@ st.markdown(
         .stButton > button { background-color: #222; color: #fff; border-radius: 4px; padding: 0.5rem 1rem; }
         .stButton > button:hover { background-color: #444; }
         img { border-radius: 4px; }
-        .thumbnail { border: 1px solid #ddd; padding: 4px; margin: 4px; }
-        .select-checkbox { text-align: center; }
-        /* Estiliza o download button para ficar fixo */
         .stDownloadButton { 
             position: fixed !important;
             bottom: 10px;
@@ -34,11 +31,35 @@ st.markdown(
             transform: translateX(-50%);
             z-index: 9999;
         }
+        .thumbnail { border: 1px solid #ddd; padding: 4px; margin: 4px; }
+        /* Checkbox over image */
+        div[data-testid^="stCheckbox"] {
+            position: absolute !important;
+            bottom: 8px !important;
+            right: 8px !important;
+            margin: 0 !important;
+            background: rgba(255,255,255,0.7) !important;
+            border-radius: 4px;
+            padding: 2px 4px;
+        }
+        .img-wrap { position: relative; margin-bottom: 1rem; }
         @media (max-width: 600px) {
             .block-container { padding: 0.5rem; }
         }
     </style>
     """,
+    unsafe_allow_html=True
+)
+
+# ─────────── INÍCIO COM INSTAGRAM ───────────
+st.markdown(
+    '<div style="text-align:center; margin-bottom:1rem;">'
+    '<a href="https://www.instagram.com/daniel8moraes/" target="_blank" '
+    'style="display:inline-block; vertical-align:middle;">'
+    '<img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png" '
+    'width="30" alt="Instagram" /></a>'
+    '<span style="font-size:1rem; margin-left:0.5rem; vertical-align:middle;">@daniel8moraes</span>'
+    '</div>',
     unsafe_allow_html=True
 )
 
@@ -79,8 +100,11 @@ for i, lut_path in enumerate(lut_paths):
     lut = load_cube_file(str(lut_path))
     img_lut = base_img.filter(lut)
     with col:
+        st.markdown(f'<div class="img-wrap">', unsafe_allow_html=True)
         st.image(img_lut, caption=lut_name, use_container_width=True)
-        selections[lut_name] = st.checkbox("Selecionar", key=f"chk_{i}")
+        st.checkbox("", key=f"chk_{i}")
+        st.markdown('</div>', unsafe_allow_html=True)
+        selections[lut_name] = st.session_state.get(f"chk_{i}", False)
 
 # ─── BOTÃO FIXO DE DOWNLOAD ───
 selected = [name for name, sel in selections.items() if sel]
@@ -103,9 +127,8 @@ if selected:
         mime="application/zip"
     )
 else:
-    # Mantém o espaço do botão, mas desabilitado
     st.download_button(
-        "Selecione até um LUT para baixar",
+        "Selecione ao menos um LUT para baixar",
         data=b"",
         file_name="",
         disabled=True
@@ -113,4 +136,4 @@ else:
 
 # ─── RODAPÉ ───
 st.markdown("---")
-st.write("**Minimal Retro Edition**")
+st.write("**@daniel8moraes**")
