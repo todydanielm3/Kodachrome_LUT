@@ -6,100 +6,93 @@ import streamlit as st
 from PIL import Image, ImageOps
 from pillow_lut import load_cube_file
 
-# ──────────────────── STREAMLIT CONFIG ────────────────────
+# ───────────────── STREAMLIT CONFIG ─────────────────
 st.set_page_config(
-    page_title="Kodachrome LUT Preview", layout="centered", initial_sidebar_state="collapsed"
+    page_title="Kodachrome LUT Gallery",
+    layout="centered",
+    initial_sidebar_state="collapsed"
 )
 
-# ──────────────────── ESTILO MÍNIMALISTA & RESPONSIVO ────────────────────
+# ─────── ESTILO MÍNIMALISTA & GALERIA ───────
 st.markdown(
     """
     <style>
         body { background: #fafafa; color: #333; font-family: 'Helvetica Neue', sans-serif; }
-        .block-container { padding: 1rem 2rem; max-width: 640px; margin: auto; }
-        h1 { text-align: center; font-weight: bold; margin-bottom: 0.5rem; }
-        p { text-align: center; margin-top: 0; }
+        .block-container { padding: 1rem 2rem; max-width: 720px; margin: auto; }
+        h1 { text-align: center; font-weight: bold; }
+        p { text-align: center; }
         .stButton > button { background-color: #222; color: #fff; border-radius: 4px; padding: 0.5rem 1rem; }
         .stButton > button:hover { background-color: #444; }
         img { border-radius: 4px; }
+        .thumbnail { border: 1px solid #ddd; padding: 4px; margin: 4px; }
+        .select-checkbox { text-align: center; }
         @media (max-width: 600px) {
-            .block-container { padding: 1rem; }
+            .block-container { padding: 0.5rem; }
         }
     </style>
     """,
-    unsafe_allow_html=True,
+    unsafe_allow_html=True
 )
 
-# ──────────────────── TÍTULO E INSTRUÇÕES ────────────────────
-st.title("📼 Kodachrome LUT Preview")
-st.write("Envie uma imagem e use os botões para navegar pelos LUTs.")
+# ────── TÍTULO ──────
+st.title("📼 Kodachrome LUT Gallery")
+st.write("Envie sua imagem e clique na(s) prévia(s) para selecionar. Depois baixe em ZIP.")
 
-# ──────────────────── CARREGAMENTO DE LUTs ────────────────────
+# ─── CARREGAR LUTs ───
 BASE_DIR = pathlib.Path(__file__).parent.resolve()
-LUT_DIR  = BASE_DIR / "luts"
-if not LUT_DIR.exists():
-    st.error("Pasta de LUTs não encontrada.")
-    st.stop()
-lut_files = sorted([p for p in LUT_DIR.glob("*.cube")])
-if not lut_files:
-    st.error("Nenhum LUT encontrado em 'luts/'.")
-    st.stop()
-lut_names = [p.name for p in lut_files]
+LUT_DIR = BASE_DIR / "luts"
+if not LUT_DIR.exists(): st.error("Pasta de LUTs não encontrada."); st.stop()
+lut_paths = sorted(LUT_DIR.glob("*.cube"))
+if not lut_paths: st.error("Nenhum LUT encontrado."); st.stop()
 
-# ──────────────────── UPLOAD DA IMAGEM ────────────────────
-uploaded_image = st.file_uploader(
-    "⬆️ Selecione uma única imagem para pré-visualização", type=["jpg","jpeg","png","tif","bmp"]
-)
-if not uploaded_image:
-    st.stop()
+# ─── UPLOAD IMAGEM ───
+uploaded = st.file_uploader("⬆️ Selecione uma imagem", type=["jpg","jpeg","png","tif","bmp"])
+if not uploaded: st.stop()
 
-# Carrega e corrige orientação
-img = ImageOps.exif_transpose(Image.open(uploaded_image)).convert("RGB")
-w, h = img.size
-base_img = img.rotate(90, expand=True) if h > w else img
+# Processar e gerar prévias
+original = ImageOps.exif_transpose(Image.open(uploaded)).convert("RGB")
+w, h = original.size
+base_img = original.rotate(90, expand=True) if h > w else original
 
-# ──────────────────── CONTROLE DE ÍNDICE ────────────────────
-if 'idx' not in st.session_state:
-    st.session_state.idx = 0
+# Gerar imagens com LUTs e checkboxes
+st.subheader("Selecione os LUTs desejados clicando na caixa abaixo da imagem")
+selections = {}
+cols_per_row = 3
+for i, lut_path in enumerate(lut_paths):
+    if i % cols_per_row == 0:
+        cols = st.columns(cols_per_row)
+    col = cols[i % cols_per_row]
+    lut_name = lut_path.name.rsplit('.',1)[0]
+    lut = load_cube_file(str(lut_path))
+    img_lut = base_img.filter(lut)
+    with col:
+        st.image(img_lut, caption=lut_name, use_container_width=True)
+        selections[lut_name] = st.checkbox(f"Selecionar {lut_name}", key=f"chk_{i}")
 
-col_nav = st.columns([1,1,1])
-with col_nav[0]:
-    if st.button("⟨ Anterior"):
-        st.session_state.idx = (st.session_state.idx - 1) % len(lut_files)
-with col_nav[1]:
-    st.write(f"**{lut_names[st.session_state.idx]}**")
-with col_nav[2]:
-    if st.button("Próximo ⟩"):
-        st.session_state.idx = (st.session_state.idx + 1) % len(lut_files)
+# Botão de download
+selected = [name for name, sel in selections.items() if sel]
+if selected:
+    if st.button("📥 Baixar selecionados em ZIP"):
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            base_name = uploaded.name.rsplit('.',1)[0]
+            for lut_name in selected:
+                path = next(p for p in lut_paths if p.name.startswith(lut_name))
+                lut = load_cube_file(str(path))
+                proc = base_img.filter(lut)
+                tmp = io.BytesIO()
+                proc.save(tmp, format="JPEG")
+                tmp.seek(0)
+                zf.writestr(f"{base_name}_{lut_name}.jpg", tmp.read())
+        buf.seek(0)
+        st.download_button(
+            "Clique para baixar",
+            data=buf,
+            file_name=f"{base_name}_luts.zip",
+            mime="application/zip"
+        )
+else:
+    st.info("Selecione ao menos um LUT para habilitar o download.")
 
-# Carrega LUT atual
-selected_path = str(lut_files[st.session_state.idx])
-lut = load_cube_file(selected_path)
-selected_name = lut_names[st.session_state.idx]
-
-# Exibição lado a lado
-st.subheader(selected_name)
-col1, col2 = st.columns(2)
-col1.image(base_img, caption="Original", use_column_width=True)
-col2.image(base_img.filter(lut), caption=selected_name, use_column_width=True)
-
-# ──────────────────── BOTÃO DE DOWNLOAD ────────────────────
-if st.button("⚙️ Processar e Baixar ZIP com Todas Versões"):
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w") as zf:
-        name = uploaded_image.name.rsplit('.',1)[0]
-        for p, nm in zip(lut_files, lut_names):
-            lut_temp = load_cube_file(str(p))
-            proc = base_img.filter(lut_temp)
-            tmp = io.BytesIO()
-            proc.save(tmp, format="JPEG")
-            zf.writestr(f"{name}_{nm.rsplit('.',1)[0].replace(' ', '_')}.jpg", tmp.getvalue())
-    buf.seek(0)
-    st.download_button(
-        "📥 Baixar todas as versões", data=buf,
-        file_name=f"{name}_all_luts.zip", mime="application/zip"
-    )
-
-# ──────────────────── RODAPÉ ────────────────────
 st.markdown("---")
 st.write("**Minimal Retro Edition**")
