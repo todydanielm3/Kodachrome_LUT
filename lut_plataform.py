@@ -68,7 +68,7 @@ w, h = original.size
 base_img = original.rotate(90, expand=True) if h > w else original
 
 # ─── GALERIA DE LUTs ───
-st.subheader("Selecione as prévias desejadas clicando na imagem")
+st.subheader("Selecione as prévias desejadas")
 selections = {}
 cols_per_row = 3
 for i, lut_path in enumerate(lut_paths):
@@ -79,24 +79,8 @@ for i, lut_path in enumerate(lut_paths):
     lut = load_cube_file(str(lut_path))
     img_lut = base_img.filter(lut)
     with col:
-        # container para posicionamento relativo
-        st.markdown(
-            f'<div class="img-wrap" id="wrap_{i}" style="position:relative; display:inline-block; width:100%;">',
-            unsafe_allow_html=True
-        )
-        # exibe imagem
-        st.image(img_lut, use_container_width=True)
-        # checkbox oculta abaixo da imagem, mas será reposicionado via CSS
-        st.checkbox("Selecionar", key=f"chk_{i}", label_visibility="collapsed")
-        # fecha container
-        st.markdown('</div>', unsafe_allow_html=True)
-        selections[lut_name] = st.session_state.get(f"chk_{i}", False)
-
-# CSS para posicionar checkbox no canto da imagem
-css_positions = ""
-for i in range(len(lut_paths)):
-    css_positions += f"div[data-testid=\"stCheckbox-chk_{i}\"]{{position:absolute!important; bottom:8px!important; right:8px!important; margin:0!important;}}"
-st.markdown(f"<style>{css_positions}</style>", unsafe_allow_html=True)
+        st.image(img_lut, caption=lut_name, use_container_width=True)
+        selections[lut_name] = st.checkbox("Selecionar", key=f"chk_{i}")
 
 # ─── BOTÃO FIXO DE DOWNLOAD ───
 selected = [name for name, sel in selections.items() if sel]
