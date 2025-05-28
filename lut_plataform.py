@@ -6,9 +6,9 @@ import streamlit as st
 from PIL import Image, ImageOps
 from pillow_lut import load_cube_file
 
-# ─────────────────────────── STREAMLIT CONFIG ───────────────────────────
+# ──────────────────── STREAMLIT CONFIG ────────────────────
 st.set_page_config(
-    page_title="Kodachrome LUT", layout="centered", initial_sidebar_state="collapsed"
+    page_title="Kodachrome LUT Preview", layout="centered", initial_sidebar_state="collapsed"
 )
 
 # ──────────────────── ESTILO MÍNIMALISTA & RESPONSIVO ────────────────────
@@ -22,7 +22,6 @@ st.markdown(
         .stButton > button { background-color: #222; color: #fff; border-radius: 4px; padding: 0.5rem 1rem; }
         .stButton > button:hover { background-color: #444; }
         img { border-radius: 4px; }
-        .lut-slider { width: 100%; }
         @media (max-width: 600px) {
             .block-container { padding: 1rem; }
         }
@@ -33,7 +32,7 @@ st.markdown(
 
 # ──────────────────── TÍTULO E INSTRUÇÕES ────────────────────
 st.title("📼 Kodachrome LUT Preview")
-st.write("Envie uma imagem e deslize para ver o efeito de cada LUT em tempo real.")
+st.write("Envie uma imagem e use os botões para navegar pelos LUTs.")
 
 # ──────────────────── CARREGAMENTO DE LUTs ────────────────────
 BASE_DIR = pathlib.Path(__file__).parent.resolve()
@@ -45,6 +44,7 @@ lut_files = sorted([p for p in LUT_DIR.glob("*.cube")])
 if not lut_files:
     st.error("Nenhum LUT encontrado em 'luts/'.")
     st.stop()
+lut_names = [p.name for p in lut_files]
 
 # ──────────────────── UPLOAD DA IMAGEM ────────────────────
 uploaded_image = st.file_uploader(
@@ -58,40 +58,48 @@ img = ImageOps.exif_transpose(Image.open(uploaded_image)).convert("RGB")
 w, h = img.size
 base_img = img.rotate(90, expand=True) if h > w else img
 
-# ──────────────────── SLIDER DE LUTs ────────────────────
-lut_names = [f.name for f in lut_files]
-index = st.slider(
-    "🎞️ Escolha o LUT", 0, len(lut_files)-1, 0, format=None, key="lut_slider"
-)
-selected_lut_path = str(lut_files[index])
-lut = load_cube_file(selected_lut_path)
-selected_name = lut_names[index]
+# ──────────────────── CONTROLE DE ÍNDICE ────────────────────
+if 'idx' not in st.session_state:
+    st.session_state.idx = 0
+
+col_nav = st.columns([1,1,1])
+with col_nav[0]:
+    if st.button("⟨ Anterior"):
+        st.session_state.idx = (st.session_state.idx - 1) % len(lut_files)
+with col_nav[1]:
+    st.write(f"**{lut_names[st.session_state.idx]}**")
+with col_nav[2]:
+    if st.button("Próximo ⟩"):
+        st.session_state.idx = (st.session_state.idx + 1) % len(lut_files)
+
+# Carrega LUT atual
+selected_path = str(lut_files[st.session_state.idx])
+lut = load_cube_file(selected_path)
+selected_name = lut_names[st.session_state.idx]
 
 # Exibição lado a lado
-st.subheader(f"LUT: {selected_name}")
+st.subheader(selected_name)
 col1, col2 = st.columns(2)
 col1.image(base_img, caption="Original", use_column_width=True)
 col2.image(base_img.filter(lut), caption=selected_name, use_column_width=True)
 
-# ──────────────────── PROCESSAR E BAIXAR ────────────────────
-if st.button("⚙️ Processar e Baixar ZIP com Todos LUTs"):
+# ──────────────────── BOTÃO DE DOWNLOAD ────────────────────
+if st.button("⚙️ Processar e Baixar ZIP com Todas Versões"):
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as zf:
-        for p in lut_files:
+        name = uploaded_image.name.rsplit('.',1)[0]
+        for p, nm in zip(lut_files, lut_names):
             lut_temp = load_cube_file(str(p))
             proc = base_img.filter(lut_temp)
             tmp = io.BytesIO()
             proc.save(tmp, format="JPEG")
-            name = uploaded_image.name.rsplit('.',1)[0]
-            lut_clean = p.name.rsplit('.',1)[0].replace(' ', '_')
-            zf.writestr(f"{name}_{lut_clean}.jpg", tmp.getvalue())
+            zf.writestr(f"{name}_{nm.rsplit('.',1)[0].replace(' ', '_')}.jpg", tmp.getvalue())
     buf.seek(0)
     st.download_button(
         "📥 Baixar todas as versões", data=buf,
-        file_name=f"{uploaded_image.name.rsplit('.',1)[0]}_all_luts.zip",
-        mime="application/zip"
+        file_name=f"{name}_all_luts.zip", mime="application/zip"
     )
 
-# ──────────────────── RODAPÉ SIMPLES ────────────────────
+# ──────────────────── RODAPÉ ────────────────────
 st.markdown("---")
 st.write("**Minimal Retro Edition**")
