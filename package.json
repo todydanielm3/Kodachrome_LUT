@@ -1,0 +1,29 @@
+{
+  "name": "kodachrome-lut-gallery",
+  "version": "2.0.0",
+  "description": "Kodachrome LUT Gallery - Aplicador de filtros LUT em imagens",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack --mode production",
+    "dev": "webpack serve --mode development",
+    "start": "npm run build"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "dropzone": "^6.0.0-beta.2"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.23.0",
+    "@babel/preset-env": "^7.23.0",
+    "babel-loader": "^9.1.0",
+    "css-loader": "^6.8.0",
+    "html-webpack-plugin": "^5.5.0",
+    "style-loader": "^3.3.0",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.0",
+    "webpack-dev-server": "^4.15.0"
+  },
+  "keywords": ["lut", "image-processing", "kodachrome", "photography"],
+  "author": "Daniel Moraes",
+  "license": "MIT"
+}

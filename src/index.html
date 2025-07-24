@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📼 Kodachrome LUT Gallery</title>
+    <meta name="description" content="Aplique filtros LUT vintage em suas imagens com o estilo clássico da Kodachrome">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <header class="header">
+            <div class="container">
+                <div class="social-link">
+                    <a href="https://www.instagram.com/daniel8moraes/" target="_blank" rel="noopener">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png" alt="Instagram" width="24" height="24">
+                        <span>@daniel8moraes</span>
+                    </a>
+                </div>
+                <h1>📼 Kodachrome LUT Gallery</h1>
+                <p>Envie sua imagem e selecione as prévias desejadas. Download ficará disponível sempre visível.</p>
+            </div>
+        </header>
+
+        <main class="main">
+            <div class="container">
+                <!-- Upload Area -->
+                <section class="upload-section">
+                    <div id="dropzone" class="dropzone">
+                        <div class="dropzone-content">
+                            <div class="upload-icon">⬆️</div>
+                            <h3>Arraste sua imagem aqui</h3>
+                            <p>ou clique para selecionar</p>
+                            <small>Formatos aceitos: JPG, PNG, TIFF, BMP</small>
+                        </div>
+                        <input type="file" id="file-input" accept=".jpg,.jpeg,.png,.tif,.tiff,.bmp" style="display: none;">
+                    </div>
+                </section>
+
+                <!-- Loading -->
+                <div id="loading" class="loading hidden">
+                    <div class="loading-spinner"></div>
+                    <p>Processando imagem...</p>
+                </div>
+
+                <!-- Gallery -->
+                <section id="gallery-section" class="gallery-section hidden">
+                    <h2>Selecione as prévias desejadas</h2>
+                    <div id="gallery" class="gallery"></div>
+                </section>
+
+                <!-- Download Button -->
+                <div id="download-section" class="download-section hidden">
+                    <button id="download-btn" class="download-btn" disabled>
+                        📥 Selecione ao menos um LUT para baixar
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <div class="container">
+                <p><strong>@daniel8moraes</strong></p>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>
