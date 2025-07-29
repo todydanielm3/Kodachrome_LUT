@@ -103,8 +103,250 @@ class KodachromeLUTGallery {
         const downloadBtn = document.getElementById('download-btn');
         downloadBtn.addEventListener('click', () => this.downloadSelected());
         
+        // Inicializar upload
+        this.initializeUpload();
+        
         // Mostrar LUTs automaticamente para demonstração
         this.showLUTList();
+    }
+
+    initializeUpload() {
+        const dropzoneElement = document.getElementById('dropzone');
+        const fileInput = document.getElementById('file-input');
+
+        if (!dropzoneElement || !fileInput) {
+            console.warn('Elementos de upload não encontrados');
+            return;
+        }
+
+        // Click handler for dropzone
+        dropzoneElement.addEventListener('click', (e) => {
+            e.preventDefault();
+            fileInput.click();
+        });
+
+        // File input change handler
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                this.handleFileUpload(e.target.files[0]);
+            }
+        });
+
+        // Drag and drop handlers
+        dropzoneElement.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzoneElement.classList.add('dragover');
+        });
+
+        dropzoneElement.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropzoneElement.classList.remove('dragover');
+        });
+
+        dropzoneElement.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzoneElement.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                this.handleFileUpload(files[0]);
+            }
+        });
+    }
+
+    async handleFileUpload(file) {
+        console.log('Arquivo selecionado:', file.name);
+        
+        // Validar tipo de arquivo
+        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/tiff', 'image/bmp'];
+        if (!validTypes.includes(file.type)) {
+            alert('Tipo de arquivo não suportado. Use JPG, PNG, TIFF ou BMP.');
+            return;
+        }
+
+        // Mostrar loading
+        this.showLoading();
+        
+        try {
+            // Converter arquivo para base64
+            const base64Data = await this.fileToBase64(file);
+            
+            // Tentar enviar para o backend
+            try {
+                const response = await fetch('/.netlify/functions/process-image', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        image_data: base64Data,
+                        selected_luts: this.lutNames.slice(0, 20) // Processar apenas os primeiros 20 para demo
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    this.originalImage = file;
+                    this.processedImages = data.processed_images;
+                    
+                    // Atualizar galeria com imagens processadas
+                    this.showProcessedGallery(data.luts || this.lutNames.slice(0, 20));
+                } else {
+                    throw new Error('Erro na API');
+                }
+            } catch (apiError) {
+                console.warn('API não disponível, usando modo demonstração:', apiError);
+                
+                // Fallback: mostrar preview da imagem original
+                this.originalImage = file;
+                this.showImagePreview(file);
+            }
+            
+        } catch (error) {
+            console.error('Erro ao processar imagem:', error);
+            alert('Erro ao processar a imagem. Tente novamente.');
+        } finally {
+            this.hideLoading();
+        }
+    }
+
+    fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+        });
+    }
+
+    showLoading() {
+        const loading = document.getElementById('loading');
+        if (loading) {
+            loading.classList.remove('hidden');
+        }
+    }
+
+    hideLoading() {
+        const loading = document.getElementById('loading');
+        if (loading) {
+            loading.classList.add('hidden');
+        }
+    }
+
+    showImagePreview(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const imageUrl = e.target.result;
+            
+            // Atualizar título para mostrar que uma imagem foi carregada
+            const gallerySection = document.getElementById('gallery-section');
+            const title = gallerySection.querySelector('h2');
+            title.textContent = `Imagem carregada: ${file.name} - Selecione os LUTs desejados`;
+            
+            // Remover mensagem de info se existir
+            const infoMessage = gallerySection.querySelector('.info-message');
+            if (infoMessage) {
+                infoMessage.remove();
+            }
+            
+            // Atualizar placeholders para mostrar a imagem original
+            const gallery = document.getElementById('gallery');
+            const items = gallery.querySelectorAll('.gallery-item');
+            
+            items.forEach(item => {
+                const placeholderImage = item.querySelector('.placeholder-image');
+                if (placeholderImage) {
+                    placeholderImage.style.backgroundImage = `url(${imageUrl})`;
+                    placeholderImage.style.backgroundSize = 'cover';
+                    placeholderImage.style.backgroundPosition = 'center';
+                    
+                    const placeholderText = placeholderImage.querySelector('.placeholder-text');
+                    if (placeholderText) {
+                        placeholderText.innerHTML = `
+                            <span class="lut-name">${placeholderText.querySelector('.lut-name').textContent}</span>
+                            <small>Imagem original</small>
+                        `;
+                    }
+                }
+            });
+            
+            // Adicionar mensagem explicativa
+            const previewMessage = document.createElement('div');
+            previewMessage.className = 'preview-message';
+            previewMessage.innerHTML = `
+                <p><strong>📸 Imagem carregada com sucesso!</strong></p>
+                <p>Visualização: Sua imagem está sendo exibida em cada filtro LUT.</p>
+                <p>Selecione os filtros desejados e clique em download para processar.</p>
+                <p><em>Nota: Para ver os efeitos reais dos filtros, é necessário processamento no servidor.</em></p>
+            `;
+            
+            gallerySection.insertBefore(previewMessage, gallerySection.querySelector('.gallery'));
+        };
+        
+        reader.readAsDataURL(file);
+    }
+
+    showProcessedGallery(luts) {
+        const gallerySection = document.getElementById('gallery-section');
+        const title = gallerySection.querySelector('h2');
+        title.textContent = `Imagem processada: ${this.originalImage.name} - ${luts.length} filtros aplicados`;
+        
+        // Remover mensagens anteriores
+        const existingMessages = gallerySection.querySelectorAll('.info-message, .preview-message');
+        existingMessages.forEach(msg => msg.remove());
+        
+        // Atualizar galeria com imagens processadas
+        const gallery = document.getElementById('gallery');
+        gallery.innerHTML = '';
+        this.selectedLUTs.clear();
+
+        luts.forEach((lutName, index) => {
+            const item = this.createProcessedGalleryItem(lutName, index);
+            gallery.appendChild(item);
+        });
+        
+        this.updateDownloadButton();
+    }
+
+    createProcessedGalleryItem(lutName, index) {
+        const item = document.createElement('div');
+        item.className = 'gallery-item';
+        
+        const imageData = this.processedImages && this.processedImages[lutName];
+        
+        item.innerHTML = `
+            <div class="image-container">
+                ${imageData ? 
+                    `<img src="data:image/jpeg;base64,${imageData}" alt="${lutName}" loading="lazy">` :
+                    `<div class="placeholder-image" style="background: linear-gradient(45deg, ${this.generateColorFromName(lutName)}, ${this.adjustColor(this.generateColorFromName(lutName))});">
+                        <div class="placeholder-text">
+                            <span class="lut-name">${lutName}</span>
+                            <small>Processado</small>
+                        </div>
+                    </div>`
+                }
+                <div class="image-overlay">
+                    <label class="checkbox-label">
+                        <input type="checkbox" data-lut="${lutName}">
+                        <span class="checkmark"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="image-caption">${lutName}</div>
+        `;
+
+        // Adicionar event listener para checkbox
+        const checkbox = item.querySelector('input[type="checkbox"]');
+        checkbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                this.selectedLUTs.add(lutName);
+            } else {
+                this.selectedLUTs.delete(lutName);
+            }
+            this.updateDownloadButton();
+        });
+
+        return item;
     }
 
     showLUTList() {
