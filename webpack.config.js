@@ -39,12 +39,6 @@ module.exports = {
   devServer: {
     static: './dist',
     hot: true,
-    port: 3000,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8888',
-        changeOrigin: true
-      }
-    }
+    port: 3000
   }
 };
