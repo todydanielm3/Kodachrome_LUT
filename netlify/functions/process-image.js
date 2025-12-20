@@ -1,22 +1,16 @@
-const { spawn } = require('child_process');
-const path = require('path');
 const fs = require('fs');
+const path = require('path');
+const sharp = require('sharp');
 
 exports.handler = async (event, context) => {
-  // Headers CORS
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
   };
 
-  // Handle preflight OPTIONS request
   if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers,
-      body: ''
-    };
+    return { statusCode: 200, headers, body: '' };
   }
 
   if (event.httpMethod !== 'POST') {
@@ -28,7 +22,6 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    // Parse body
     const body = JSON.parse(event.body);
     const imageData = body.image_data;
 
@@ -40,114 +33,65 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Verificar se existem LUTs
-    const lutDir = path.join(__dirname, '../../luts');
-    
-    if (!fs.existsSync(lutDir)) {
-      return {
-        statusCode: 500,
-        headers,
-        body: JSON.stringify({ error: 'Pasta de LUTs não encontrada' })
-      };
-    }
-
-    const lutFiles = fs.readdirSync(lutDir)
+    // Obter lista de LUTs
+    const lutsDir = path.join(__dirname, '../../luts');
+    const lutFiles = fs.readdirSync(lutsDir)
       .filter(file => file.endsWith('.cube'))
       .sort();
 
-    if (lutFiles.length === 0) {
-      return {
-        statusCode: 500,
-        headers,
-        body: JSON.stringify({ error: 'Nenhum LUT encontrado' })
-      };
+    const lutNames = lutFiles.map(file => path.basename(file, '.cube'));
+
+    // Parse da imagem
+    let imageBuffer;
+    if (imageData.includes(',')) {
+      const base64Data = imageData.split(',')[1];
+      imageBuffer = Buffer.from(base64Data, 'base64');
+    } else {
+      imageBuffer = Buffer.from(imageData, 'base64');
     }
 
-    // Tentar usar o script Python para processamento real
-    try {
-      const pythonScript = path.join(__dirname, '../../process_luts.py');
-      const venvPython = path.join(__dirname, '../../.venv/bin/python');
-      
-      const result = await new Promise((resolve, reject) => {
-        const pythonProcess = spawn(venvPython, [pythonScript], {
-          stdio: ['pipe', 'pipe', 'pipe']
-        });
-        
-        let output = '';
-        let errorOutput = '';
-        
-        pythonProcess.stdout.on('data', (data) => {
-          output += data.toString();
-        });
-        
-        pythonProcess.stderr.on('data', (data) => {
-          errorOutput += data.toString();
-        });
-        
-        pythonProcess.on('close', (code) => {
-          if (code === 0) {
-            try {
-              const result = JSON.parse(output);
-              resolve(result);
-            } catch (e) {
-              reject(new Error(`Erro ao parsear output Python: ${e.message}`));
-            }
-          } else {
-            reject(new Error(`Python script falhou: ${errorOutput}`));
-          }
-        });
-        
-        // Enviar dados para o script Python
-        pythonProcess.stdin.write(JSON.stringify({
-          httpMethod: 'POST',
-          body: JSON.stringify(body)
-        }));
-        pythonProcess.stdin.end();
-        
-        // Timeout de 30 segundos
-        setTimeout(() => {
-          pythonProcess.kill();
-          reject(new Error('Timeout no processamento Python'));
-        }, 30000);
-      });
-      
-      return result;
-      
-    } catch (pythonError) {
-      console.log('Erro Python, usando fallback JavaScript:', pythonError.message);
-      
-      // Fallback: usar JavaScript (modo demo)
-      const lutNames = lutFiles.map(file => path.basename(file, '.cube'));
-      const processedImages = {};
-      
-      // Para demo, usar a imagem original para todos os LUTs
-      let cleanImageData = imageData;
-      if (imageData.includes(',')) {
-        cleanImageData = imageData.split(',')[1];
-      }
-
-      // Carregar todos os LUTs (demo mode - usando imagem original)
-      lutNames.forEach(lutName => {
-        processedImages[lutName] = cleanImageData;
-      });
-
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({
-          luts: lutNames,
-          processed_images: processedImages,
-          message: `Modo demo JavaScript - ${lutNames.length} LUTs carregados (processamento Python falhou)`
-        })
-      };
+    // Processar imagem com Sharp (redimensionar se necessário)
+    const image = sharp(imageBuffer);
+    const metadata = await image.metadata();
+    
+    // Redimensionar se muito grande
+    const maxSize = 1200;
+    if (metadata.width > maxSize || metadata.height > maxSize) {
+      image.resize(maxSize, maxSize, { fit: 'inside', withoutEnlargement: true });
     }
+
+    const processedBuffer = await image.jpeg({ quality: 90 }).toBuffer();
+    const processedBase64 = `data:image/jpeg;base64,${processedBuffer.toString('base64')}`;
+
+    // Por enquanto, retornar a mesma imagem para todas as LUTs (modo demo rápido)
+    // Em produção, aqui seria aplicado cada LUT
+    const processedImages = {};
+    lutNames.forEach(lutName => {
+      processedImages[lutName] = processedBase64;
+    });
+
+    return {
+      statusCode: 200,
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        luts: lutNames,
+        processed_images: processedImages,
+        count: lutNames.length
+      })
+    };
 
   } catch (error) {
     console.error('Erro:', error);
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: `Erro interno: ${error.message}` })
+      body: JSON.stringify({ 
+        error: 'Erro ao processar imagem',
+        details: error.message 
+      })
     };
   }
 };
