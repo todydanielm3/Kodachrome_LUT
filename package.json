@@ -1,12 +1,13 @@
 {
   "name": "kodachrome-lut-gallery",
-  "version": "2.0.0",
-  "description": "Kodachrome LUT Gallery - Aplicador de filtros LUT em imagens",
+  "version": "3.0.0",
+  "description": "Kodachrome LUT Gallery - Aplicador de filtros LUT profissionais com design elegante inspirado em Acervo Café",
   "main": "index.js",
   "scripts": {
     "build": "webpack --mode production",
     "dev": "webpack serve --mode development",
-    "start": "npm run build"
+    "start": "npm run build",
+    "preview": "netlify dev"
   },
   "dependencies": {
     "archiver": "^7.0.1",

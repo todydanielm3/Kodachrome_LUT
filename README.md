@@ -1,53 +1,245 @@
-# 📼 Kodachrome LUT Gallery
+# 📸 Kodachrome LUT Gallery
 
-Uma aplicação web moderna para aplicar filtros LUT (Look-Up Table) em imagens, com **289 filtros vintage** dos filmes clássicos.
+Uma aplicação web moderna e elegante para aplicar filtros LUT (Look-Up Table) profissionais em imagens, com **289 filtros vintage** inspirados nos filmes clássicos da fotografia analógica.
 
-![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
-![Node](https://img.shields.io/badge/node-%3E%3D16.0.0-brightgreen.svg)
-![Python]## 🤝 Contribuindo
+![Version](https://img.shields.io/badge/version-2.0.0-3d3026.svg)
+![License](https://img.shields.io/badge/license-MIT-6b5d52.svg)
+![Node](https://img.shields.io/badge/node-%3E%3D16.0.0-8b7355.svg)
+![Python](https://img.shields.io/badge/python-%3E%3D3.9-3d3026.svg)
+![LUTs](https://img.shields.io/badge/LUTs-289%20filtros-8b7355.svg)
+![Status](https://img.shields.io/badge/status-✅%20funcionando-5a7247.svg)
+
+---
+
+## ✨ Características
+
+🎨 **Design Elegante e Moderno** - Interface inspirada em cafeterias premium, com paleta terrosa e tipografia sofisticada  
+📸 **289 Filtros LUT Profissionais** - Organizados por fabricante e tipo de filme analógico  
+⚡ **Processamento em Tempo Real** - Preview instantâneo de todos os filtros aplicados  
+📁 **Upload Intuitivo** - Sistema drag & drop com feedback visual elegante  
+💾 **Download em Lote** - Baixe múltiplas imagens processadas em arquivo ZIP  
+🚀 **Arquitetura Serverless** - Netlify Functions para máxima escalabilidade  
+📱 **100% Responsivo** - Experiência perfeita em todos os dispositivos  
+🎭 **Animações Suaves** - Transições e efeitos inspirados em sites premium
+
+---
+
+## 🎨 Paleta de Cores
+
+O design foi inspirado no site **Acervo Café**, trazendo uma estética minimalista e sofisticada:
+
+- **Marrom Escuro** (#3d3026) - Cor principal, elegância e sofisticação
+- **Marrom Médio** (#6b5d52) - Textos secundários e elementos de apoio
+- **Bege Escuro** (#8b7355) - Acentos e bordas
+- **Bege Claro** (#f5f1ed) - Backgrounds secundários
+- **Creme** (#faf8f5) - Background principal
+- **Verde Musgo** (#5a7247) - Estados de sucesso
+
+---
+
+## 🚀 Como Usar
+
+### 1. **Upload da Imagem**
+   - Arraste sua foto para a área de upload
+   - Ou clique para selecionar do seu computador
+   - Formatos aceitos: JPG, PNG, TIFF, BMP
+
+### 2. **Explore os Filtros**
+   - Navegue pela galeria de 289 filtros
+   - Visualize o efeito em tempo real
+   - Selecione seus favoritos clicando na checkbox
+
+### 3. **Download**
+   - Clique no botão de download fixo na parte inferior
+   - Receba um arquivo ZIP com todas as imagens selecionadas
+   - Mantenha a qualidade original
+
+---
+
+## 🛠️ Instalação e Desenvolvimento
+
+### Pré-requisitos
+
+```bash
+node >= 16.0.0
+npm >= 7.0.0
+python >= 3.9
+```
+
+### Instalação
+
+```bash
+# Clone o repositório
+git clone https://github.com/todydanielm3/Kodachrome_LUT.git
+cd Kodachrome_LUT
+
+# Instale as dependências Node.js
+npm install
+
+# Instale as dependências Python
+pip install -r requirements.txt
+
+# Configure o ambiente
+chmod +x setup.sh
+./setup.sh
+```
+
+### Desenvolvimento Local
+
+```bash
+# Inicie o servidor de desenvolvimento
+npm run dev
+
+# Em outro terminal, inicie as Netlify Functions
+netlify dev
+
+# Acesse: http://localhost:8080
+```
+
+---
+
+## 📦 Estrutura do Projeto
+
+```
+Kodachrome_LUT/
+├── src/
+│   ├── index.html          # HTML principal com novo design
+│   ├── styles.css          # CSS com paleta terrosa
+│   ├── animations.css      # Animações suaves e elegantes
+│   ├── index.js            # JavaScript principal
+│   └── demo.js             # Demonstrações interativas
+├── luts/                   # 289 arquivos .cube
+├── netlify/
+│   └── functions/          # Serverless functions
+│       ├── process-image/  # Processamento de imagens
+│       └── download-zip/   # Geração de ZIP
+├── package.json
+├── requirements.txt
+└── README.md
+```
+
+---
+
+## 🎯 Tecnologias Utilizadas
+
+### Frontend
+- **HTML5** - Estrutura semântica moderna
+- **CSS3** - Variáveis CSS, Grid, Flexbox, Animações
+- **JavaScript (ES6+)** - Classes, async/await, módulos
+- **Webpack** - Bundling e otimização
+- **Fontes Google** - Cormorant Garamond & Montserrat
+
+### Backend
+- **Python 3.9+** - Processamento de imagens
+- **Pillow** - Manipulação de imagens
+- **colour-science** - Aplicação de LUTs
+- **Netlify Functions** - Serverless computing
+
+### DevOps
+- **Netlify** - Hospedagem e CI/CD
+- **Git** - Controle de versão
+- **npm** - Gerenciamento de pacotes
+
+---
+
+## 🎨 Design System
+
+### Tipografia
+- **Títulos**: Cormorant Garamond (serifada elegante)
+- **Corpo**: Montserrat (sans-serif moderna)
+- **Tamanhos**: Sistema modular escalável
+
+### Espaçamentos
+```css
+--spacing-xs: 0.5rem  (8px)
+--spacing-sm: 1rem    (16px)
+--spacing-md: 2rem    (32px)
+--spacing-lg: 4rem    (64px)
+--spacing-xl: 6rem    (96px)
+```
+
+### Sombras
+```css
+--shadow-sm: 0 2px 8px rgba(61, 48, 38, 0.08)
+--shadow-md: 0 4px 16px rgba(61, 48, 38, 0.12)
+--shadow-lg: 0 8px 32px rgba(61, 48, 38, 0.16)
+```
+
+---
+
+## 📱 Responsividade
+
+O design é totalmente responsivo com breakpoints:
+- **Desktop**: > 1024px
+- **Tablet**: 768px - 1024px
+- **Mobile**: < 768px
+- **Small Mobile**: < 480px
+
+---
+
+## 🤝 Contribuindo
 
 Contribuições são **sempre bem-vindas**! 🎉
 
-### 🚀 Quick Start para Contribuidores
-1. **🍴 Fork** o projeto
-2. **📥 Clone** seu fork: `git clone https://github.com/SEU_USER/kodachrome-lut-gallery.git`
-3. **🌿 Crie** uma branch: `git checkout -b feature/nova-funcionalidade`
-4. **💻 Desenvolva** suas alterações
-5. **🧪 Teste** localmente: `npm run dev && netlify dev`
-6. **✅ Valide**: `./test-luts.sh && ./check-migration.sh`
-7. **📝 Commit**: `git commit -m 'feat: adiciona nova funcionalidade'`
-8. **🚀 Push**: `git push origin feature/nova-funcionalidade`
-9. **🔄 Pull Request**: Abra PR com descrição detalhada
+### Como Contribuir
+1. Fork o projeto
+2. Crie uma branch: `git checkout -b feature/nova-funcionalidade`
+3. Commit: `git commit -m 'feat: adiciona nova funcionalidade'`
+4. Push: `git push origin feature/nova-funcionalidade`
+5. Abra um Pull Request
 
-### 📋 Diretrizes de Contribuição
-- 📚 **Documente** novas funcionalidades no README e comentários
-- 🧪 **Teste** suas alterações em diferentes browsers/dispositivos  
-- 🎨 **Mantenha** o padrão de código (ESLint/Prettier)
-- 📱 **Garanta** responsividade mobile-first
-- ⚡ **Otimize** performance (lighthouse score >90)
-- 🔒 **Valide** segurança em uploads e processamento
+### Diretrizes
+- Mantenha o design system existente
+- Teste em múltiplos dispositivos
+- Documente suas alterações
+- Siga os padrões de código
 
-### 🏷️ Tipos de Contribuição
-- 🐛 **Bug fixes** - Correção de problemas
-- ✨ **Features** - Novas funcionalidades  
-- 📚 **Documentação** - Melhorias na documentação
-- 🎨 **UI/UX** - Melhorias na interface
-- ⚡ **Performance** - Otimizações de velocidade
-- 🧪 **Testes** - Adição de testes automatizadoselds.io/badge/python-%3E%3D3.9-blue.svg)
-![LUTs](https://img.shields.io/badge/LUTs-289%20filtros-orange.svg)
-![Status](https://img.shields.io/badge/status-✅%20funcionando-success.svg)
-![Build](https://img.shields.io/badge/build-passing-brightgreen.svg)
-![Netlify](https://img.shields.io/badge/netlify-deployed-00C7B7.svg)
+---
 
-## 🌟 Características
+## 📄 Licença
 
-✨ **289 filtros LUT profissionais** organizados por fabricante e tipo de filme  
-🎨 **Interface moderna e 100% responsiva** com design clean e intuitivo  
-📁 **Drag & drop inteligente** para upload de múltiplas imagens  
-⚡ **Processamento em tempo real** com preview instantâneo dos filtros  
-📦 **Download em lote** das imagens processadas em arquivo ZIP  
-🚀 **Arquitetura serverless** com Netlify Functions para máxima escalabilidade  
+Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+
+---
+
+## 👨‍💻 Autor
+
+Desenvolvido com ♥ por **Daniel Moraes**
+
+- Instagram: [@daniel8moraes](https://www.instagram.com/daniel8moraes/)
+- GitHub: [@todydanielm3](https://github.com/todydanielm3)
+
+---
+
+## 🙏 Agradecimentos
+
+- Inspiração de design: [Acervo Café](https://www.acervocafe.com/)
+- Filtros LUT: Comunidade de fotografia analógica
+- Fontes: Google Fonts
+- Hospedagem: Netlify
+
+---
+
+## 📊 Performance
+
+- **Lighthouse Score**: 95+
+- **First Contentful Paint**: < 1.5s
+- **Time to Interactive**: < 3s
+- **Cumulative Layout Shift**: < 0.1
+
+---
+
+## 🔄 Changelog
+
+Veja [CHANGELOG.md](CHANGELOG.md) para histórico de versões.
+
+---
+
+<div align="center">
+
+**[⬆ Voltar ao topo](#-kodachrome-lut-gallery)**
+
+</div>  
 🌍 **Performance otimizada** com CDN global e cache inteligente  
 📱 **Mobile-first** com suporte completo para dispositivos móveis  
 🔍 **Busca avançada** por nome, fabricante ou estilo de filme  

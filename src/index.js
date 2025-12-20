@@ -1,4 +1,5 @@
 import './styles.css';
+import './animations.css';
 import Dropzone from 'dropzone';
 import axios from 'axios';
 
@@ -176,12 +177,13 @@ class KodachromeLUTGallery {
     updateDownloadButton() {
         const downloadBtn = document.getElementById('download-btn');
         const count = this.selectedLUTs.size;
+        const btnSpan = downloadBtn.querySelector('span');
         
         if (count > 0) {
-            downloadBtn.textContent = `📥 Baixar ${count} imagem${count > 1 ? 's' : ''} selecionada${count > 1 ? 's' : ''} em ZIP`;
+            btnSpan.textContent = `Baixar ${count} imagem${count > 1 ? 's' : ''} selecionada${count > 1 ? 's' : ''}`;
             downloadBtn.disabled = false;
         } else {
-            downloadBtn.textContent = '📥 Selecione ao menos um LUT para baixar';
+            btnSpan.textContent = 'Selecione ao menos um filtro';
             downloadBtn.disabled = true;
         }
     }
