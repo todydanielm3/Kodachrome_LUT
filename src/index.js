@@ -10,7 +10,9 @@ class KodachromeLUTGallery {
     constructor() {
         this.selectedLUTs = new Set();
         this.originalImage = null;
+        this.originalImageBase64 = null;
         this.processedImages = {};
+        this.allLuts = [];
         
         this.initializeDropzone();
         this.initializeEventListeners();
@@ -67,14 +69,15 @@ class KodachromeLUTGallery {
         }
 
         // Mostrar loading
-        this.showLoading();
+        this.showLoading('Gerando previews dos filtros...');
         
         try {
             // Converter arquivo para base64
             const base64Data = await this.fileToBase64(file);
+            this.originalImageBase64 = base64Data;
             
-            // Enviar para o backend
-            const response = await axios.post('/api/process-image', {
+            // Chamar a function de preview (30 LUTs principais)
+            const response = await axios.post('/.netlify/functions/preview-luts', {
                 image_data: base64Data
             }, {
                 headers: {
@@ -83,14 +86,15 @@ class KodachromeLUTGallery {
             });
 
             this.originalImage = file;
-            this.processedImages = response.data.processed_images;
+            this.processedImages = response.data.previews;
+            this.allLuts = response.data.all_luts; // Lista completa de todos os LUTs
             
-            // Mostrar galeria
-            this.showGallery(response.data.luts);
+            // Mostrar galeria com previews
+            this.showGallery(Object.keys(response.data.previews), response.data.total_luts);
             
         } catch (error) {
-            console.error('Erro ao processar imagem:', error);
-            let errorMessage = 'Erro ao processar a imagem. Tente novamente.';
+            console.error('Erro ao gerar previews:', error);
+            let errorMessage = 'Erro ao gerar previews. Tente novamente.';
             if (error.response && error.response.data && error.response.data.error) {
                 errorMessage = error.response.data.error;
             }
@@ -109,8 +113,13 @@ class KodachromeLUTGallery {
         });
     }
 
-    showLoading() {
-        document.getElementById('loading').classList.remove('hidden');
+    showLoading(message = 'Processando...') {
+        const loadingEl = document.getElementById('loading');
+        const loadingText = loadingEl.querySelector('p');
+        if (loadingText) {
+            loadingText.textContent = message;
+        }
+        loadingEl.classList.remove('hidden');
         document.getElementById('gallery-section').classList.add('hidden');
         document.getElementById('download-section').classList.add('hidden');
     }
@@ -119,7 +128,7 @@ class KodachromeLUTGallery {
         document.getElementById('loading').classList.add('hidden');
     }
 
-    showGallery(luts) {
+    showGallery(previewLuts, totalLuts) {
         const gallery = document.getElementById('gallery');
         const gallerySection = document.getElementById('gallery-section');
         const downloadSection = document.getElementById('download-section');
@@ -128,8 +137,17 @@ class KodachromeLUTGallery {
         gallery.innerHTML = '';
         this.selectedLUTs.clear();
 
+        // Mostrar informação de previews
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'gallery-info';
+        infoDiv.innerHTML = `
+            <p>Mostrando <strong>${previewLuts.length} previews</strong> de <strong>${totalLuts} filtros</strong> disponíveis</p>
+            <p class="hint">Selecione os filtros desejados e clique em "Baixar" para processar em alta qualidade</p>
+        `;
+        gallery.appendChild(infoDiv);
+
         // Criar itens da galeria
-        luts.forEach((lutName, index) => {
+        previewLuts.forEach((lutName, index) => {
             const item = this.createGalleryItem(lutName, index);
             gallery.appendChild(item);
         });
@@ -149,7 +167,7 @@ class KodachromeLUTGallery {
         
         item.innerHTML = `
             <div class="image-container">
-                <img src="data:image/jpeg;base64,${imageData}" alt="${lutName}" loading="lazy">
+                <img src="${imageData}" alt="${lutName}" loading="lazy">
                 <div class="image-overlay">
                     <label class="checkbox-label">
                         <input type="checkbox" data-lut="${lutName}">
@@ -157,7 +175,7 @@ class KodachromeLUTGallery {
                     </label>
                 </div>
             </div>
-            <div class="image-caption">${lutName}</div>
+            <div class="image-caption">${this.formatLutName(lutName)}</div>
         `;
 
         // Adicionar event listener para checkbox
@@ -165,13 +183,20 @@ class KodachromeLUTGallery {
         checkbox.addEventListener('change', (e) => {
             if (e.target.checked) {
                 this.selectedLUTs.add(lutName);
+                item.classList.add('selected');
             } else {
                 this.selectedLUTs.delete(lutName);
+                item.classList.remove('selected');
             }
             this.updateDownloadButton();
         });
 
         return item;
+    }
+
+    formatLutName(lutName) {
+        // Formatar nome do LUT para exibição (substituir _ por espaço e capitalizar)
+        return lutName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
 
     updateDownloadButton() {
@@ -191,17 +216,27 @@ class KodachromeLUTGallery {
     async downloadSelected() {
         if (this.selectedLUTs.size === 0) return;
 
+        this.showLoading(`Processando ${this.selectedLUTs.size} filtros selecionados...`);
+
         try {
             const selectedArray = Array.from(this.selectedLUTs);
-            const response = await axios.post('/api/download-zip', {
-                selected_luts: selectedArray,
-                filename: this.originalImage.name
+            
+            // Chamar function para processar LUTs selecionados
+            const response = await axios.post('/.netlify/functions/process-selected', {
+                image_data: this.originalImageBase64,
+                selected_luts: selectedArray
             }, {
-                responseType: 'blob'
+                headers: {
+                    'Content-Type': 'application/json'
+                }
             });
 
+            // Converter base64 do ZIP para blob
+            const zipBase64 = response.data.zip_data;
+            const zipBuffer = Uint8Array.from(atob(zipBase64), c => c.charCodeAt(0));
+            const blob = new Blob([zipBuffer], { type: 'application/zip' });
+            
             // Criar download
-            const blob = new Blob([response.data], { type: 'application/zip' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -211,9 +246,17 @@ class KodachromeLUTGallery {
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
 
+            alert(`✅ ${response.data.processed_count} imagens baixadas com sucesso!`);
+
         } catch (error) {
-            console.error('Erro ao baixar arquivo:', error);
-            alert('Erro ao baixar o arquivo. Tente novamente.');
+            console.error('Erro ao processar e baixar:', error);
+            let errorMessage = 'Erro ao processar. Tente novamente.';
+            if (error.response && error.response.data && error.response.data.error) {
+                errorMessage = error.response.data.error;
+            }
+            alert(errorMessage);
+        } finally {
+            this.hideLoading();
         }
     }
 }
