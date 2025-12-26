@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const sharp = require('sharp');
+// Sharp removido temporariamente para evitar problemas de build no Netlify
+// const sharp = require('sharp');
 // const { applyLUT } = require('./lut-processor'); // Desabilitado temporariamente por timeout
 
 // Lista de LUTs principais para preview rápido (30 primeiros)
@@ -70,7 +71,7 @@ exports.handler = async (event, context) => {
 
     console.log('Processando preview de LUTs...');
 
-    // Parse da imagem
+    // Parse da imagem - apenas para validação, não processamos
     let imageBuffer;
     if (imageData.includes(',')) {
       const base64Data = imageData.split(',')[1];
@@ -79,21 +80,11 @@ exports.handler = async (event, context) => {
       imageBuffer = Buffer.from(imageData, 'base64');
     }
 
-    // Processar imagem - criar thumbnail menor para preview (400px max para ser mais rápido)
-    let image = sharp(imageBuffer);
-    const metadata = await image.metadata();
-    
-    console.log(`Imagem original: ${metadata.width}x${metadata.height}`);
-    
-    // Thumbnail menor para preview rápido
-    const maxSize = 400;
-    if (metadata.width > maxSize || metadata.height > maxSize) {
-      image = image.resize(maxSize, maxSize, { fit: 'inside', withoutEnlargement: true });
-    }
+    console.log(`Imagem recebida: ${imageBuffer.length} bytes`);
 
-    // Gerar thumbnail base
-    const thumbnailBuffer = await image.jpeg({ quality: 80 }).toBuffer();
-    const thumbnailBase64 = `data:image/jpeg;base64,${thumbnailBuffer.toString('base64')}`;
+    // Usar a imagem original como base para todos os previews (modo demo ultra-rápido)
+    // Sem processamento Sharp para evitar problemas de compatibilidade no Netlify
+    const thumbnailBase64 = imageData.includes(',') ? imageData : `data:image/jpeg;base64,${imageData}`;
 
     // Obter TODOS os LUTs disponíveis
     const lutsDir = path.join(__dirname, '../../luts');

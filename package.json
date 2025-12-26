@@ -15,7 +15,7 @@
     "axios": "^1.6.0",
     "dropzone": "^6.0.0-beta.2",
     "form-data": "^4.0.4",
-    "sharp": "^0.34.5"
+    "sharp": "^0.33.5"
   },
   "devDependencies": {
     "@babel/core": "^7.23.0",
