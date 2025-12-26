@@ -1,6 +1,7 @@
 # 📼 Kodachrome LUT Gallery
 
-![Hero Image](https://via.placeholder.com/1200x400/1a1a1a/ffffff?text=📼+Kodachrome+LUT+Gallery)
+<img width="1429" height="690" alt="image" src="https://github.com/user-attachments/assets/c6fc9608-ef1f-426d-8506-1e4f4c65bbca" />
+
 
 ## 🎨 Transforme suas fotos com 289 filtros vintage
 
@@ -11,6 +12,9 @@ Aplicação web moderna para aplicar filtros LUT dos filmes clássicos Kodak, Fu
 - **Interface moderna** 100% responsiva  
 - **Performance otimizada** 3x mais rápida
 - **Arquitetura serverless** infinitamente escalável
+
+<img width="1269" height="739" alt="image" src="https://github.com/user-attachments/assets/4f49f1e1-2ebd-41e3-b867-34ed04cb5111" />
+
 
 ### 🚀 [Ver Demo](https://kodachrome-lut-gallery.netlify.app) • 📖 [Documentação](./README.md) • 🐛 [Issues](../../issues)
 
