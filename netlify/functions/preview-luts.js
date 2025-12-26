@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
+const { applyLUT } = require('./lut-processor');
 
 // Lista de LUTs principais para preview rápido (30 primeiros)
 const PREVIEW_LUTS = [
@@ -77,17 +78,14 @@ exports.handler = async (event, context) => {
     }
 
     // Processar imagem - criar thumbnail menor para preview (600px max)
-    const image = sharp(imageBuffer);
+    let image = sharp(imageBuffer);
     const metadata = await image.metadata();
     
     // Thumbnail menor para preview rápido
     const maxSize = 600;
     if (metadata.width > maxSize || metadata.height > maxSize) {
-      image.resize(maxSize, maxSize, { fit: 'inside', withoutEnlargement: true });
+      image = image.resize(maxSize, maxSize, { fit: 'inside', withoutEnlargement: true });
     }
-
-    const thumbnailBuffer = await image.jpeg({ quality: 85 }).toBuffer();
-    const thumbnailBase64 = `data:image/jpeg;base64,${thumbnailBuffer.toString('base64')}`;
 
     // Obter TODOS os LUTs disponíveis
     const lutsDir = path.join(__dirname, '../../luts');
@@ -96,15 +94,40 @@ exports.handler = async (event, context) => {
       .map(file => path.basename(file, '.cube'))
       .sort();
 
-    // Para evitar estouro de payload, retornar apenas 50 previews por vez
-    // com a mesma imagem (modo demo rápido)
-    const maxPreviews = 50;
-    const previewLuts = allLutFiles.slice(0, maxPreviews);
+    // Para evitar estouro de payload e timeout, processar apenas 30 LUTs principais
+    const maxPreviews = 30;
+    const mainLuts = [
+      'fuji_400h', 'kodak_portra_400', 'kodak_ektar_100',
+      'fuji_provia_100f', 'kodak_portra_160', 'fuji_velvia_50',
+      'ilford_hp_5_plus_400', 'kodak_portra_800', 'fuji_astia_100f',
+      'ilford_delta_400', 'fuji_superia_100', 'kodak_portra_160_vc',
+      'fuji_160c', 'ilford_delta_3200', 'kodak_portra_400_vc',
+      'fuji_velvia_100', 'agfa_vista_200', 'fuji_800z',
+      'ilford_hp_5', 'fuji_provia_400f', 'kodak_portra_160_nc',
+      'agfa_apx_100', 'fuji_superia_1600', 'ilford_pan_f_plus_50',
+      'kodak_portra_400_nc', 'ilford_delta_100', 'fuji_provia_400x',
+      'agfa_precisa_100', 'polaroid_polablue', 'kodak_portra_800_++'
+    ];
     
+    const previewLuts = mainLuts.filter(lut => allLutFiles.includes(lut)).slice(0, maxPreviews);
+    
+    // Processar cada LUT
     const previews = {};
-    previewLuts.forEach(lutName => {
-      previews[lutName] = thumbnailBase64;
-    });
+    for (const lutName of previewLuts) {
+      const lutPath = path.join(lutsDir, `${lutName}.cube`);
+      
+      try {
+        // Aplicar LUT na imagem
+        const processedImage = await applyLUT(image.clone(), lutPath);
+        const buffer = await processedImage.jpeg({ quality: 85 }).toBuffer();
+        previews[lutName] = `data:image/jpeg;base64,${buffer.toString('base64')}`;
+      } catch (error) {
+        console.error(`Erro ao processar LUT ${lutName}:`, error.message);
+        // Em caso de erro, usar imagem original
+        const buffer = await image.clone().jpeg({ quality: 85 }).toBuffer();
+        previews[lutName] = `data:image/jpeg;base64,${buffer.toString('base64')}`;
+      }
+    }
 
     return {
       statusCode: 200,
@@ -117,7 +140,7 @@ exports.handler = async (event, context) => {
         preview_count: previewLuts.length,
         all_luts: allLutFiles,
         total_luts: allLutFiles.length,
-        message: `Mostrando ${previewLuts.length} de ${allLutFiles.length} previews`
+        message: `Mostrando ${previewLuts.length} previews processados de ${allLutFiles.length} filtros disponíveis`
       })
     };
 

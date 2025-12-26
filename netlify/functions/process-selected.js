@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
 const archiver = require('archiver');
+const { applyLUT } = require('./lut-processor');
 
 exports.handler = async (event, context) => {
   const headers = {
@@ -59,16 +60,14 @@ exports.handler = async (event, context) => {
     }
 
     // Processar imagem (tamanho máximo para qualidade final)
-    const image = sharp(imageBuffer);
+    let image = sharp(imageBuffer);
     const metadata = await image.metadata();
     
     // Redimensionar se muito grande (max 1920px para output final)
     const maxSize = 1920;
     if (metadata.width > maxSize || metadata.height > maxSize) {
-      image.resize(maxSize, maxSize, { fit: 'inside', withoutEnlargement: true });
+      image = image.resize(maxSize, maxSize, { fit: 'inside', withoutEnlargement: true });
     }
-
-    const processedBuffer = await image.jpeg({ quality: 92 }).toBuffer();
 
     // Processar cada LUT selecionado
     const lutsDir = path.join(__dirname, '../../luts');
@@ -82,10 +81,15 @@ exports.handler = async (event, context) => {
         continue;
       }
 
-      // Por enquanto retorna a mesma imagem processada
-      // TODO: Implementar aplicação real do LUT
-      const imageBase64 = `data:image/jpeg;base64,${processedBuffer.toString('base64')}`;
-      processedImages[lutName] = imageBase64;
+      try {
+        // Aplicar LUT na imagem
+        const processedImage = await applyLUT(image.clone(), lutPath);
+        const buffer = await processedImage.jpeg({ quality: 92 }).toBuffer();
+        const imageBase64 = `data:image/jpeg;base64,${buffer.toString('base64')}`;
+        processedImages[lutName] = imageBase64;
+      } catch (error) {
+        console.error(`Erro ao processar LUT ${lutName}:`, error.message);
+      }
     }
 
     // Criar ZIP com as imagens
