@@ -89,25 +89,19 @@ exports.handler = async (event, context) => {
     const thumbnailBuffer = await image.jpeg({ quality: 85 }).toBuffer();
     const thumbnailBase64 = `data:image/jpeg;base64,${thumbnailBuffer.toString('base64')}`;
 
-    // Verificar quais LUTs existem
+    // Obter TODOS os LUTs disponíveis para preview
     const lutsDir = path.join(__dirname, '../../luts');
-    const availableLuts = PREVIEW_LUTS.filter(lutName => {
-      const lutPath = path.join(lutsDir, `${lutName}.cube`);
-      return fs.existsSync(lutPath);
-    });
-
-    // Por enquanto retorna a mesma thumbnail para todos os previews
-    // TODO: Implementar processamento real de LUT
-    const previews = {};
-    availableLuts.forEach(lutName => {
-      previews[lutName] = thumbnailBase64;
-    });
-
-    // Obter lista completa de todos os LUTs disponíveis
     const allLutFiles = fs.readdirSync(lutsDir)
       .filter(file => file.endsWith('.cube'))
       .map(file => path.basename(file, '.cube'))
       .sort();
+
+    // Retornar a mesma thumbnail para todos (modo demo)
+    // TODO: Implementar processamento real de LUT
+    const previews = {};
+    allLutFiles.forEach(lutName => {
+      previews[lutName] = thumbnailBase64;
+    });
 
     return {
       statusCode: 200,
@@ -117,7 +111,7 @@ exports.handler = async (event, context) => {
       },
       body: JSON.stringify({
         previews: previews,
-        preview_count: availableLuts.length,
+        preview_count: allLutFiles.length,
         all_luts: allLutFiles,
         total_luts: allLutFiles.length
       })
