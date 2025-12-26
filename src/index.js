@@ -142,7 +142,8 @@ class KodachromeLUTGallery {
         infoDiv.className = 'gallery-info';
         infoDiv.innerHTML = `
             <p>Mostrando <strong>${previewLuts.length} previews</strong> de <strong>${totalLuts} filtros</strong> disponíveis</p>
-            <p class="hint">Selecione os filtros desejados e clique em "Baixar" para processar em alta qualidade</p>
+            <p class="hint">⚠️ <strong>Previews são apenas demonstração</strong> - Os filtros LUT serão aplicados apenas nas imagens baixadas</p>
+            <p class="hint">💡 Clique nos cards para selecionar os filtros desejados e depois clique em "Baixar"</p>
         `;
         gallery.appendChild(infoDiv);
 
@@ -168,7 +169,7 @@ class KodachromeLUTGallery {
         item.innerHTML = `
             <div class="image-container">
                 <img src="${imageData}" alt="${lutName}" loading="lazy">
-                <div class="image-overlay">
+                <div class="checkbox-container">
                     <label class="checkbox-label">
                         <input type="checkbox" data-lut="${lutName}">
                         <span class="checkmark"></span>
@@ -181,6 +182,7 @@ class KodachromeLUTGallery {
         // Adicionar event listener para checkbox
         const checkbox = item.querySelector('input[type="checkbox"]');
         checkbox.addEventListener('change', (e) => {
+            e.stopPropagation();
             if (e.target.checked) {
                 this.selectedLUTs.add(lutName);
                 item.classList.add('selected');
@@ -189,6 +191,14 @@ class KodachromeLUTGallery {
                 item.classList.remove('selected');
             }
             this.updateDownloadButton();
+        });
+
+        // Click no card também seleciona
+        item.addEventListener('click', (e) => {
+            if (e.target.tagName !== 'INPUT') {
+                checkbox.checked = !checkbox.checked;
+                checkbox.dispatchEvent(new Event('change'));
+            }
         });
 
         return item;

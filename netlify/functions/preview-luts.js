@@ -89,17 +89,20 @@ exports.handler = async (event, context) => {
     const thumbnailBuffer = await image.jpeg({ quality: 85 }).toBuffer();
     const thumbnailBase64 = `data:image/jpeg;base64,${thumbnailBuffer.toString('base64')}`;
 
-    // Obter TODOS os LUTs disponíveis para preview
+    // Obter TODOS os LUTs disponíveis
     const lutsDir = path.join(__dirname, '../../luts');
     const allLutFiles = fs.readdirSync(lutsDir)
       .filter(file => file.endsWith('.cube'))
       .map(file => path.basename(file, '.cube'))
       .sort();
 
-    // Retornar a mesma thumbnail para todos (modo demo)
-    // TODO: Implementar processamento real de LUT
+    // Para evitar estouro de payload, retornar apenas 50 previews por vez
+    // com a mesma imagem (modo demo rápido)
+    const maxPreviews = 50;
+    const previewLuts = allLutFiles.slice(0, maxPreviews);
+    
     const previews = {};
-    allLutFiles.forEach(lutName => {
+    previewLuts.forEach(lutName => {
       previews[lutName] = thumbnailBase64;
     });
 
@@ -111,9 +114,10 @@ exports.handler = async (event, context) => {
       },
       body: JSON.stringify({
         previews: previews,
-        preview_count: allLutFiles.length,
+        preview_count: previewLuts.length,
         all_luts: allLutFiles,
-        total_luts: allLutFiles.length
+        total_luts: allLutFiles.length,
+        message: `Mostrando ${previewLuts.length} de ${allLutFiles.length} previews`
       })
     };
 
