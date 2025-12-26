@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
-const { applyLUT } = require('./lut-processor');
+// const { applyLUT } = require('./lut-processor'); // Desabilitado temporariamente por timeout
 
 // Lista de LUTs principais para preview rápido (30 primeiros)
 const PREVIEW_LUTS = [
@@ -68,6 +68,8 @@ exports.handler = async (event, context) => {
       };
     }
 
+    console.log('Processando preview de LUTs...');
+
     // Parse da imagem
     let imageBuffer;
     if (imageData.includes(',')) {
@@ -77,15 +79,21 @@ exports.handler = async (event, context) => {
       imageBuffer = Buffer.from(imageData, 'base64');
     }
 
-    // Processar imagem - criar thumbnail menor para preview (600px max)
+    // Processar imagem - criar thumbnail menor para preview (400px max para ser mais rápido)
     let image = sharp(imageBuffer);
     const metadata = await image.metadata();
     
+    console.log(`Imagem original: ${metadata.width}x${metadata.height}`);
+    
     // Thumbnail menor para preview rápido
-    const maxSize = 600;
+    const maxSize = 400;
     if (metadata.width > maxSize || metadata.height > maxSize) {
       image = image.resize(maxSize, maxSize, { fit: 'inside', withoutEnlargement: true });
     }
+
+    // Gerar thumbnail base
+    const thumbnailBuffer = await image.jpeg({ quality: 80 }).toBuffer();
+    const thumbnailBase64 = `data:image/jpeg;base64,${thumbnailBuffer.toString('base64')}`;
 
     // Obter TODOS os LUTs disponíveis
     const lutsDir = path.join(__dirname, '../../luts');
@@ -94,8 +102,9 @@ exports.handler = async (event, context) => {
       .map(file => path.basename(file, '.cube'))
       .sort();
 
-    // Para evitar estouro de payload e timeout, processar apenas 30 LUTs principais
-    const maxPreviews = 30;
+    console.log(`Total de LUTs disponíveis: ${allLutFiles.length}`);
+
+    // Selecionar apenas 30 LUTs principais para preview
     const mainLuts = [
       'fuji_400h', 'kodak_portra_400', 'kodak_ektar_100',
       'fuji_provia_100f', 'kodak_portra_160', 'fuji_velvia_50',
@@ -109,25 +118,20 @@ exports.handler = async (event, context) => {
       'agfa_precisa_100', 'polaroid_polablue', 'kodak_portra_800_++'
     ];
     
-    const previewLuts = mainLuts.filter(lut => allLutFiles.includes(lut)).slice(0, maxPreviews);
+    const previewLuts = mainLuts.filter(lut => allLutFiles.includes(lut)).slice(0, 30);
     
-    // Processar cada LUT
+    console.log(`Processando ${previewLuts.length} previews...`);
+
+    // MODO DEMO: Por enquanto retornar a mesma imagem para todos os previews
+    // Processamento real de LUT é muito lento para ambiente serverless (timeout)
+    // TODO: Implementar processamento em background ou cache
     const previews = {};
     for (const lutName of previewLuts) {
-      const lutPath = path.join(lutsDir, `${lutName}.cube`);
-      
-      try {
-        // Aplicar LUT na imagem
-        const processedImage = await applyLUT(image.clone(), lutPath);
-        const buffer = await processedImage.jpeg({ quality: 85 }).toBuffer();
-        previews[lutName] = `data:image/jpeg;base64,${buffer.toString('base64')}`;
-      } catch (error) {
-        console.error(`Erro ao processar LUT ${lutName}:`, error.message);
-        // Em caso de erro, usar imagem original
-        const buffer = await image.clone().jpeg({ quality: 85 }).toBuffer();
-        previews[lutName] = `data:image/jpeg;base64,${buffer.toString('base64')}`;
-      }
+      // Usar mesma thumbnail para todos (modo demo rápido)
+      previews[lutName] = thumbnailBase64;
     }
+
+    console.log(`Preview concluído: ${Object.keys(previews).length} imagens`);
 
     return {
       statusCode: 200,
@@ -140,7 +144,8 @@ exports.handler = async (event, context) => {
         preview_count: previewLuts.length,
         all_luts: allLutFiles,
         total_luts: allLutFiles.length,
-        message: `Mostrando ${previewLuts.length} previews processados de ${allLutFiles.length} filtros disponíveis`
+        message: `Mostrando ${previewLuts.length} previews de ${allLutFiles.length} filtros disponíveis`,
+        mode: 'demo'
       })
     };
 
@@ -151,7 +156,8 @@ exports.handler = async (event, context) => {
       headers,
       body: JSON.stringify({ 
         error: 'Erro ao gerar previews',
-        details: error.message 
+        details: error.message,
+        stack: error.stack
       })
     };
   }
