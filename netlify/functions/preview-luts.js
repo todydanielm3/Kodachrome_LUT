@@ -86,8 +86,22 @@ exports.handler = async (event, context) => {
     // Sem processamento Sharp para evitar problemas de compatibilidade no Netlify
     const thumbnailBase64 = imageData.includes(',') ? imageData : `data:image/jpeg;base64,${imageData}`;
 
-    // Obter TODOS os LUTs disponíveis
-    const lutsDir = path.join(__dirname, '../../luts');
+    // Obter TODOS os LUTs disponíveis - buscar em luts/ local às funções
+    const lutsDir = path.join(__dirname, 'luts');
+    
+    // Verificar se o diretório existe
+    if (!fs.existsSync(lutsDir)) {
+      console.error(`Diretório de LUTs não encontrado: ${lutsDir}`);
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ 
+          error: 'Diretório de LUTs não encontrado',
+          path: lutsDir
+        })
+      };
+    }
+    
     const allLutFiles = fs.readdirSync(lutsDir)
       .filter(file => file.endsWith('.cube'))
       .map(file => path.basename(file, '.cube'))

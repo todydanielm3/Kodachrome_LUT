@@ -70,7 +70,20 @@ exports.handler = async (event, context) => {
     }
 
     // Processar cada LUT selecionado
-    const lutsDir = path.join(__dirname, '../../luts');
+    const lutsDir = path.join(__dirname, 'luts');
+    
+    // Verificar se o diretório existe
+    if (!fs.existsSync(lutsDir)) {
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ 
+          error: 'Diretório de LUTs não encontrado',
+          path: lutsDir
+        })
+      };
+    }
+    
     const processedImages = {};
 
     for (const lutName of selectedLuts) {

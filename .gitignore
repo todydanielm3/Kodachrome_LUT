@@ -45,6 +45,7 @@ venv.bak/
 
 # Netlify
 .netlify/
+netlify/functions/luts/
 
 # Local development
 luts_aplicados/
