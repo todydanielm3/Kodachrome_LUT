@@ -6,7 +6,8 @@
 [functions]
   node_bundler = "esbuild"
   external_node_modules = ["sharp"]
-  included_files = ["luts/**"]
+  # LUTs são lidos da raiz do projeto, não precisam ser incluídos no bundle
+  # included_files = ["luts/**"]
 
 [[redirects]]
   from = "/api/*"

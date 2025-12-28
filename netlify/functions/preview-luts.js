@@ -86,18 +86,25 @@ exports.handler = async (event, context) => {
     // Sem processamento Sharp para evitar problemas de compatibilidade no Netlify
     const thumbnailBase64 = imageData.includes(',') ? imageData : `data:image/jpeg;base64,${imageData}`;
 
-    // Obter TODOS os LUTs disponíveis - buscar em luts/ local às funções
-    const lutsDir = path.join(__dirname, 'luts');
+    // Obter TODOS os LUTs disponíveis - buscar na raiz do projeto
+    // Usar process.cwd() que sempre aponta para a raiz do projeto
+    const lutsDir = path.join(process.cwd(), 'luts');
+    
+    console.log(`Procurando LUTs em: ${lutsDir}`);
     
     // Verificar se o diretório existe
     if (!fs.existsSync(lutsDir)) {
       console.error(`Diretório de LUTs não encontrado: ${lutsDir}`);
+      console.error(`process.cwd(): ${process.cwd()}`);
+      console.error(`__dirname: ${__dirname}`);
       return {
         statusCode: 500,
         headers,
         body: JSON.stringify({ 
           error: 'Diretório de LUTs não encontrado',
-          path: lutsDir
+          path: lutsDir,
+          cwd: process.cwd(),
+          dirname: __dirname
         })
       };
     }
