@@ -1,8 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-// Sharp removido temporariamente para evitar problemas de build no Netlify
-// const sharp = require('sharp');
-// const { applyLUT } = require('./lut-processor'); // Desabilitado temporariamente por timeout
+const sharp = require('sharp');
+const { applyLUT } = require('./lut-processor');
 
 // Lista de LUTs principais para preview rápido (30 primeiros)
 const PREVIEW_LUTS = [
@@ -71,7 +70,7 @@ exports.handler = async (event, context) => {
 
     console.log('Processando preview de LUTs...');
 
-    // Parse da imagem - apenas para validação, não processamos
+    // Parse da imagem
     let imageBuffer;
     if (imageData.includes(',')) {
       const base64Data = imageData.split(',')[1];
@@ -82,9 +81,19 @@ exports.handler = async (event, context) => {
 
     console.log(`Imagem recebida: ${imageBuffer.length} bytes`);
 
-    // Usar a imagem original como base para todos os previews (modo demo ultra-rápido)
-    // Sem processamento Sharp para evitar problemas de compatibilidade no Netlify
-    const thumbnailBase64 = imageData.includes(',') ? imageData : `data:image/jpeg;base64,${imageData}`;
+    // Processar imagem - criar thumbnail para preview
+    let image = sharp(imageBuffer);
+    const metadata = await image.metadata();
+    
+    console.log(`Imagem original: ${metadata.width}x${metadata.height}`);
+    
+    // Redimensionar para preview (menor = mais rápido)
+    const maxSize = 400;
+    if (metadata.width > maxSize || metadata.height > maxSize) {
+      image = image.resize(maxSize, maxSize, { fit: 'inside', withoutEnlargement: true });
+    }
+    
+    const baseImageBuffer = await image.toBuffer();
 
     // Obter TODOS os LUTs disponíveis - buscar na raiz do projeto
     // Usar process.cwd() que sempre aponta para a raiz do projeto
@@ -132,15 +141,31 @@ exports.handler = async (event, context) => {
     
     const previewLuts = mainLuts.filter(lut => allLutFiles.includes(lut)).slice(0, 30);
     
-    console.log(`Processando ${previewLuts.length} previews...`);
+    console.log(`Processando ${previewLuts.length} previews com LUTs reais...`);
 
-    // MODO DEMO: Por enquanto retornar a mesma imagem para todos os previews
-    // Processamento real de LUT é muito lento para ambiente serverless (timeout)
-    // TODO: Implementar processamento em background ou cache
+    // Processar cada LUT para preview
     const previews = {};
     for (const lutName of previewLuts) {
-      // Usar mesma thumbnail para todos (modo demo rápido)
-      previews[lutName] = thumbnailBase64;
+      const lutPath = path.join(lutsDir, `${lutName}.cube`);
+      
+      if (!fs.existsSync(lutPath)) {
+        console.warn(`LUT não encontrado: ${lutName}`);
+        continue;
+      }
+
+      try {
+        // Aplicar LUT na imagem
+        const processedImage = await applyLUT(sharp(baseImageBuffer), lutPath);
+        const buffer = await processedImage.jpeg({ quality: 80 }).toBuffer();
+        const imageBase64 = `data:image/jpeg;base64,${buffer.toString('base64')}`;
+        previews[lutName] = imageBase64;
+        console.log(`✓ Preview ${lutName} processado`);
+      } catch (error) {
+        console.error(`Erro ao processar LUT ${lutName}:`, error.message);
+        // Em caso de erro, usar imagem original
+        const buffer = await sharp(baseImageBuffer).jpeg({ quality: 80 }).toBuffer();
+        previews[lutName] = `data:image/jpeg;base64,${buffer.toString('base64')}`;
+      }
     }
 
     console.log(`Preview concluído: ${Object.keys(previews).length} imagens`);
@@ -157,7 +182,7 @@ exports.handler = async (event, context) => {
         all_luts: allLutFiles,
         total_luts: allLutFiles.length,
         message: `Mostrando ${previewLuts.length} previews de ${allLutFiles.length} filtros disponíveis`,
-        mode: 'demo'
+        mode: 'real'
       })
     };
 

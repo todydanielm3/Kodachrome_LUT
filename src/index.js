@@ -142,8 +142,8 @@ class KodachromeLUTGallery {
         infoDiv.className = 'gallery-info';
         infoDiv.innerHTML = `
             <p>Mostrando <strong>${previewLuts.length} previews</strong> de <strong>${totalLuts} filtros</strong> disponíveis</p>
-            <p class="hint">⚠️ <strong>Previews são demonstração</strong> - Os filtros LUT serão aplicados nas imagens baixadas em alta qualidade</p>
-            <p class="hint">💡 Clique nos cards para selecionar os filtros desejados e depois clique em "Baixar"</p>
+            <p class="hint">💡 Clique nos cards para selecionar os filtros desejados e depois clique em "Baixar Selecionados"</p>
+            <p class="hint">📥 As imagens baixadas terão os filtros aplicados em alta qualidade</p>
         `;
         gallery.appendChild(infoDiv);
 
